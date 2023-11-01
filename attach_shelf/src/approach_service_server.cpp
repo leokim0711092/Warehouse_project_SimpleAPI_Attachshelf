@@ -182,7 +182,7 @@ class Approach_Server : public rclcpp::Node{
                 transform.transform.translation.x * transform.transform.translation.x +
                 transform.transform.translation.y * transform.transform.translation.y);
 
-            vel.linear.x = distance_to_point*0.5; // move in x-direction of robot's frame
+            vel.linear.x = 0.15; 
             RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
             pub_->publish(vel);
 
@@ -211,10 +211,6 @@ class Approach_Server : public rclcpp::Node{
                     pub_elevator->publish(ele);
                     move_forward = false;
                 }else {
-                    RCLCPP_INFO(this->get_logger(), "distance_to_point = %f",distance_to_point);
-                    RCLCPP_INFO(this->get_logger(), "X = %f",transform.transform.translation.x);
-                    RCLCPP_INFO(this->get_logger(), "Y = %f",transform.transform.translation.y);
-
                     vel.linear.x = distance_to_point*0.5 > 0.15 ? 0.15 : distance_to_point*0.5; // move in x-direction of robot's frame
                     RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
                     pub_->publish(vel);

@@ -37,17 +37,21 @@ def call_approach_shelf(node):
     request.attach_to_shelf = True
     future = client.call_async(request)
     rclpy.spin_until_future_complete(node, future)
+    
+    length = None
 
     if future.result() is not None:
         response = future.result()
         if response.complete:
             node.get_logger().info('Service call succeeded')
+            length = response.length
+            print('length %f' % (length))
         else:
             node.get_logger().error('Service call failed')
     else:
         node.get_logger().error('Service call failed')
-        length = response.length
-        return length
+        
+    return length        
 
 def adjust_robot_footprint(navigator, new_footprint):
     # Modify the robot's footprint in the navigation parameters
@@ -108,7 +112,6 @@ def main():
     if result == TaskResult.SUCCEEDED:
         print('Arrive at loading position! Bringing product to shipping destination (' + request_destination + ')...')
         length = call_approach_shelf(node)
-        print('length %f' % (length))
         new_footprint = [ length/2.0, length/2.0, -length/2.0, -length/2.0]
         adjust_robot_footprint( navigator , new_footprint)
         
