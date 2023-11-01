@@ -48,7 +48,7 @@ def generate_launch_description():
 
 
     return LaunchDescription([
-        # approach_server,
+        approach_server,
 
         robot_state_publisher,
 

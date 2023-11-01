@@ -5,6 +5,7 @@ import math
 from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
+from custom_interfaces.srv import GoToLoading
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -28,7 +29,23 @@ shipping_destinations = {
     "conveyer_432": [6.217, 2.153],
     "frieght_bay_3": [-6.349, 9.147]}
 
+def call_approach_shelf(node):
+    client = node.create_client(GoToLoading, 'approach_shelf')
+    while not client.wait_for_service(timeout_sec=1.0):
+        node.get_logger().info('Service server is not available. Waiting...')
+    request = GoToLoading.Request()
+    request.attach_to_shelf = True
+    future = client.call_async(request)
+    rclpy.spin_until_future_complete(node, future)
 
+    if future.result() is not None:
+        response = future.result()
+        if response.complete:
+            node.get_logger().info('Service call succeeded')
+        else:
+            node.get_logger().error('Service call failed')
+    else:
+        node.get_logger().error('Service call failed')
 
 def main():
 
@@ -37,6 +54,7 @@ def main():
 
     rclpy.init()
 
+    node = rclpy.create_node("Client_of_approach_shelf")
     navigator = BasicNavigator()
 
     # Set your demo's initial pose
@@ -82,7 +100,7 @@ def main():
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
         print('Arrive at loading position! Bringing product to shipping destination (' + request_destination + ')...')
-
+        call_approach_shelf(node)
         # shipping_destination = PoseStamped()
         # shipping_destination.header.frame_id = 'map'
         # shipping_destination.header.stamp = navigator.get_clock().now().to_msg()
@@ -105,6 +123,7 @@ def main():
         pass
 
     exit(0)
+    node.destroy_node()
 
 
 if __name__ == '__main__':
