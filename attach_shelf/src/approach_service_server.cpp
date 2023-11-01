@@ -164,7 +164,8 @@ class Approach_Server : public rclcpp::Node{
          void move_towards_cart_frame(){
             // Get the transform from base_link to cart_frame
             geometry_msgs::msg::TransformStamped transform;
-            
+            bool move_forward = true;
+
             try
             {
                 transform = tf_buffer_.lookupTransform("robot_front_laser_base_link", "cart_frame", rclcpp::Time(0));
@@ -175,28 +176,56 @@ class Approach_Server : public rclcpp::Node{
                 return;
             }
 
-            // Compute the direction and magnitude based on the transform's translation
             float distance_to_point = std::sqrt(
                 transform.transform.translation.x * transform.transform.translation.x +
                 transform.transform.translation.y * transform.transform.translation.y);
 
-            float desired_distance = distance_to_point;  // Approach by 30cm
-            vel.linear.x = desired_distance*0.5; // move in x-direction of robot's frame
+            vel.linear.x = distance_to_point*0.5; // move in x-direction of robot's frame
             RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
-
             pub_->publish(vel);
 
-            
-            rclcpp::Rate l(0.4);
-            l.sleep();
-            ud_date_cart_frame = false;
-            vel.linear.x = 0;
-            pub_->publish(vel);
-            pub_elevator->publish(ele);
-    }
+            rclcpp::Rate l(20);
 
+            while (move_forward) {
+
+                l.sleep();
+                try
+                {
+                transform = tf_buffer_.lookupTransform("cart_frame", "robot_front_laser_base_link", rclcpp::Time(0));
+                
+                if (std::abs(transform.transform.translation.x) < 0.03 && std::abs(transform.transform.translation.y) < 0.03)
+                {
+                    vel.linear.x = 0.0;
+                    pub_->publish(vel);
+                    pub_elevator->publish(ele);
+                    move_forward = false;
+                }else {
+                    distance_to_point = std::sqrt(
+                    transform.transform.translation.x * transform.transform.translation.x +
+                    transform.transform.translation.y * transform.transform.translation.y);
+                    RCLCPP_INFO(this->get_logger(), "distance_to_point = %f",distance_to_point);
+
+                    vel.linear.x = distance_to_point< 0.10 ?distance_to_point*0.3 :distance_to_point*0.5; // move in x-direction of robot's frame
+                    RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
+                    pub_->publish(vel);
+                }
+                }
+                catch (tf2::TransformException &ex)
+                {
+                    // Handle the exception (e.g., transform not available)
+                    RCLCPP_ERROR(this->get_logger(), "Transform lookup failed: %s", ex.what());
+                    // Stop moving the robot
+                    vel.linear.x = 0.0;
+                    pub_->publish(vel);
+                    move_forward = false;
+                }
+            }
+        }
 
 };
+
+
+
 
 int main(int argc, char *argv[]){
     rclcpp::init(argc, argv);

@@ -39,9 +39,16 @@ def generate_launch_description():
         parameters=[params]
     )
 
+    approach_server = Node(
+        package='attach_shelf',
+        executable='approach_test',
+        output='screen',
+        emulate_tty=True
+        )
 
 
     return LaunchDescription([
+        # approach_server,
 
         robot_state_publisher,
 

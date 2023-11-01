@@ -17,8 +17,8 @@ desired_rotation_angle = math.pi / 2.0
 
 # Shelf positions for loading
 loading_position = {
-    "position": [5.62, 0.94],
-    "orientation": [ 0.0, 0.0 , math.sin(desired_rotation_angle/2 ),math.cos(desired_rotation_angle/2 )]
+    "position": [5.82, 0.97],
+    "orientation": [ 0.0, 0.0 , -math.sin(desired_rotation_angle/2 ),math.cos(desired_rotation_angle/2 )]
     }
 
 # Shipping destination for picked products
