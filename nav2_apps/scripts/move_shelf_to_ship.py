@@ -6,6 +6,9 @@ from geometry_msgs.msg import PoseStamped
 from rclpy.duration import Duration
 import rclpy
 from custom_interfaces.srv import GoToLoading
+from geometry_msgs.msg import Polygon, Point32
+from rclpy.node import Node
+
 
 from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
@@ -29,34 +32,87 @@ shipping_destinations = {
     "conveyer_432": [6.217, 2.153],
     "frieght_bay_3": [-6.349, 9.147]}
 
-def call_approach_shelf(node):
-    client = node.create_client(GoToLoading, 'approach_shelf')
-    while not client.wait_for_service(timeout_sec=1.0):
-        node.get_logger().info('Service server is not available. Waiting...')
-    request = GoToLoading.Request()
-    request.attach_to_shelf = True
-    future = client.call_async(request)
-    rclpy.spin_until_future_complete(node, future)
-    
-    length = None
+class ServiceAndPublisherNode(Node):
 
-    if future.result() is not None:
-        response = future.result()
-        if response.complete:
-            node.get_logger().info('Service call succeeded')
-            length = response.length
-            print('length %f' % (length))
-        else:
-            node.get_logger().error('Service call failed')
-    else:
-        node.get_logger().error('Service call failed')
+    def __init__(self):
+        super().__init__('service_and_publisher_node')
+
+        # Create a service client
+        self.service_client = self.create_client(GoToLoading, 'approach_shelf')
+        while not self.service_client.wait_for_service(timeout_sec=1.0):
+            self.get_logger().info('Service server is not available. Waiting...')
+
+        # Create a publisher for the custom footprint
+        self.publisher_local = self.create_publisher(Polygon, 'local_costmap/footprint', 10)
+        self.publisher_global = self.create_publisher(Polygon, 'global_costmap/footprint', 10)
+
+
+    def call_approach_shelf(self):
+
+        request = GoToLoading.Request()
+        request.attach_to_shelf = True
+        future = self.service_client.call_async(request)
+        rclpy.spin_until_future_complete(self, future)
         
-    return length        
+        length = None
 
-def adjust_robot_footprint(navigator, new_footprint):
-    # Modify the robot's footprint in the navigation parameters
-    navigator.setNavigationParam('local_costmap', 'footprint', new_footprint)
-    navigator.setNavigationParam('global_costmap', 'footprint', new_footprint)
+        if future.result() is not None:
+            response = future.result()
+            if response.complete:
+                self.get_logger().info('Service call succeeded')
+                length = response.length
+                self.publish_custom_footprint(length)
+                print('length %f' % (length))
+            else:
+                self.get_logger().error('Service call failed')
+        else:
+            self.get_logger().error('Service call failed')
+            
+        return length        
+
+
+    def publish_custom_footprint(self, length):
+        new_footprint = self.create_custom_footprint(length)
+
+        # Publish the updated footprint
+        self.publisher_local.publish(new_footprint)
+        self.publisher_global.publish(new_footprint)
+        self.get_logger().info('publish_footprint')
+
+    def create_custom_footprint(self, length):
+            
+        new_footprint = Polygon()
+        # new_footprint.header.frame_id = 'robot_odom'  # Specify the frame_id 
+
+        point1 = Point32()
+        point1.x = length / 2.0
+        point1.y = length / 2.0
+        point1.z = 0.0
+
+        point2 = Point32()
+        point2.x = -length / 2.0
+        point2.y = length / 2.0
+        point2.z = 0.0
+
+        point3 = Point32()
+        point3.x = -length / 2.0
+        point3.y = -length / 2.0
+        point3.z = 0.0
+
+        point4 = Point32()
+        point4.x = length / 2.0
+        point4.y = -length / 2.0
+        point4.z = 0.0
+
+        # Add the points to the polygon
+        new_footprint.points.append(point1)
+        new_footprint.points.append(point2)
+        new_footprint.points.append(point3)
+        new_footprint.points.append(point4)
+
+        return new_footprint
+
+
 
 def main():
 
@@ -65,7 +121,7 @@ def main():
 
     rclpy.init()
 
-    node = rclpy.create_node("Client_of_approach_shelf")
+    node = ServiceAndPublisherNode()
     navigator = BasicNavigator()
 
     # Set your demo's initial pose
@@ -110,10 +166,9 @@ def main():
 
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
-        print('Arrive at loading position! Bringing product to shipping destination (' + request_destination + ')...')
-        length = call_approach_shelf(node)
-        new_footprint = [ length/2.0, length/2.0, -length/2.0, -length/2.0]
-        adjust_robot_footprint( navigator , new_footprint)
+        print('Arrive at loading position!')
+
+        node.call_approach_shelf() 
         
         # shipping_destination = PoseStamped()
         # shipping_destination.header.frame_id = 'map'
