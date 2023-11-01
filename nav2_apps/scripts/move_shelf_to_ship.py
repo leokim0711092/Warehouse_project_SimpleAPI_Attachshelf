@@ -18,7 +18,7 @@ desired_rotation_angle = math.pi / 2.0
 
 # Shelf positions for loading
 loading_position = {
-    "position": [5.82, 0.97],
+    "position": [5.79, 0.95],
     "orientation": [ 0.0, 0.0 , -math.sin(desired_rotation_angle/2 ),math.cos(desired_rotation_angle/2 )]
     }
 
@@ -46,6 +46,13 @@ def call_approach_shelf(node):
             node.get_logger().error('Service call failed')
     else:
         node.get_logger().error('Service call failed')
+        length = response.length
+        return length
+
+def adjust_robot_footprint(navigator, new_footprint):
+    # Modify the robot's footprint in the navigation parameters
+    navigator.setNavigationParam('local_costmap', 'footprint', new_footprint)
+    navigator.setNavigationParam('global_costmap', 'footprint', new_footprint)
 
 def main():
 
@@ -100,7 +107,11 @@ def main():
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
         print('Arrive at loading position! Bringing product to shipping destination (' + request_destination + ')...')
-        call_approach_shelf(node)
+        length = call_approach_shelf(node)
+        print('length %f' % (length))
+        new_footprint = [ length/2.0, length/2.0, -length/2.0, -length/2.0]
+        adjust_robot_footprint( navigator , new_footprint)
+        
         # shipping_destination = PoseStamped()
         # shipping_destination.header.frame_id = 'map'
         # shipping_destination.header.stamp = navigator.get_clock().now().to_msg()

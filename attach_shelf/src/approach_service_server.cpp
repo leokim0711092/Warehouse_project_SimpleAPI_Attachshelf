@@ -123,15 +123,17 @@ class Approach_Server : public rclcpp::Node{
                 ud_date_cart_frame = true;
                 broadcaster_.sendTransform(broadcast_transform( (x1+x2)/2 + std::fabs((y1-y2)/2) , (y1+y2)/2));
                 l.sleep();
+                res->length = std::sqrt( std::pow(x1-x2,2) + std::pow(y1-y2,2 ));
                 move_towards_cart_frame();
                 RCLCPP_INFO(this->get_logger(), "Approach call");
 
                 RCLCPP_INFO(this->get_logger(), "Accept_idz = %zu",accept_idx_size);
-
+                RCLCPP_INFO(this->get_logger(), "Length = %f", res->length);
                 res->complete = true;
             }else if(req->attach_to_shelf == false && accept_idx_size == 2){
                 ud_date_cart_frame = true;
                 broadcaster_.sendTransform(broadcast_transform( (x1+x2)/2 + std::fabs((y1-y2)/2) , (y1+y2)/2));
+                res->length = std::sqrt( std::pow(x1-x2,2) + std::pow(y1-y2,2 ));
                 l.sleep();
                 vel.linear.x = 0;
                 vel.angular.z = 0;
@@ -168,7 +170,7 @@ class Approach_Server : public rclcpp::Node{
 
             try
             {
-                transform = tf_buffer_.lookupTransform("robot_front_laser_base_link", "cart_frame", rclcpp::Time(0));
+                transform = tf_buffer_.lookupTransform("robot_base_link", "cart_frame", rclcpp::Time(0));
             }
             catch (tf2::TransformException &ex)
             {
@@ -184,28 +186,36 @@ class Approach_Server : public rclcpp::Node{
             RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
             pub_->publish(vel);
 
-            rclcpp::Rate l(20);
-
+            rclcpp::Rate l(5);
+            rclcpp::Rate r(1);
             while (move_forward) {
 
                 l.sleep();
                 try
                 {
-                transform = tf_buffer_.lookupTransform("cart_frame", "robot_front_laser_base_link", rclcpp::Time(0));
-                
-                if (std::abs(transform.transform.translation.x) < 0.03 && std::abs(transform.transform.translation.y) < 0.03)
-                {
+                transform = tf_buffer_.lookupTransform("cart_frame", "robot_base_link", rclcpp::Time(0));
+                distance_to_point = std::sqrt(
+                    transform.transform.translation.x * transform.transform.translation.x +
+                    transform.transform.translation.y * transform.transform.translation.y);
+
+                if ( distance_to_point < 0.30)
+                {   
+                    vel.linear.x = 0.1;
+                    pub_->publish(vel);
+                    for(int i = 0 ; i< 5 ;i++) {
+                        r.sleep();
+                    }                   
                     vel.linear.x = 0.0;
+                    RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
                     pub_->publish(vel);
                     pub_elevator->publish(ele);
                     move_forward = false;
                 }else {
-                    distance_to_point = std::sqrt(
-                    transform.transform.translation.x * transform.transform.translation.x +
-                    transform.transform.translation.y * transform.transform.translation.y);
                     RCLCPP_INFO(this->get_logger(), "distance_to_point = %f",distance_to_point);
+                    RCLCPP_INFO(this->get_logger(), "X = %f",transform.transform.translation.x);
+                    RCLCPP_INFO(this->get_logger(), "Y = %f",transform.transform.translation.y);
 
-                    vel.linear.x = distance_to_point< 0.10 ?distance_to_point*0.3 :distance_to_point*0.5; // move in x-direction of robot's frame
+                    vel.linear.x = distance_to_point*0.5 > 0.15 ? 0.15 : distance_to_point*0.5; // move in x-direction of robot's frame
                     RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
                     pub_->publish(vel);
                 }
