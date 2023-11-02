@@ -6,7 +6,7 @@ import xacro
 
 def generate_launch_description():
 
-
+    filters_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'filters.yaml')
     controller_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'controller.yaml')
     bt_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'bt.yaml')
     planner_yaml = os.path.join(get_package_share_directory('path_planner_server'), 'config', 'planner_server.yaml')
@@ -41,7 +41,23 @@ def generate_launch_description():
             output='screen',
             name='rviz_node',
             parameters=[{'use_sim_time': True}],
-            arguments=['-d', rviz_config_dir]),
+            arguments=['-d', rviz_config_dir]),        
+        
+        Node(
+            package='nav2_map_server',
+            executable='map_server',
+            name='filter_mask_server',
+            output='screen',
+            emulate_tty=True,
+            parameters=[filters_yaml]),
+
+        Node(
+            package='nav2_map_server',
+            executable='costmap_filter_info_server',
+            name='costmap_filter_info_server',
+            output='screen',
+            emulate_tty=True,
+            parameters=[filters_yaml]),
         
         Node(
             package='nav2_controller',
@@ -83,5 +99,7 @@ def generate_launch_description():
                         {'node_names': ['planner_server',
                                         'controller_server',
                                         'recoveries_server',
-                                        'bt_navigator']}])
+                                        'bt_navigator',
+                                        'filter_mask_server',
+                                'costmap_filter_info_server']}])
     ])
