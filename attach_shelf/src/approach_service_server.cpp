@@ -198,7 +198,7 @@ class Approach_Server : public rclcpp::Node{
                     transform.transform.translation.x * transform.transform.translation.x +
                     transform.transform.translation.y * transform.transform.translation.y);
 
-                if ( distance_to_point < 0.30)
+                if ( distance_to_point < 0.33)
                 {   
                     vel.linear.x = 0.1;
                     pub_->publish(vel);
