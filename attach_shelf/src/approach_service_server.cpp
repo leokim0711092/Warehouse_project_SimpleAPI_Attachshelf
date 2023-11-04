@@ -18,6 +18,7 @@
 #include "tf2_ros/buffer.h"
 #include "std_msgs/msg/empty.hpp"
 #include "custom_interfaces/srv/go_to_loading.hpp"
+#include <geometry_msgs/msg/transform_stamped.hpp>
 
 class Approach_Server : public rclcpp::Node{
     
@@ -39,9 +40,15 @@ class Approach_Server : public rclcpp::Node{
             pub_ = this->create_publisher<geometry_msgs::msg::Twist>("robot/cmd_vel", 10);
             pub_elevator = this->create_publisher<std_msgs::msg::Empty>("/elevator_up", 10);
 
+            static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
+
+            timer_ = create_wall_timer(
+            std::chrono::milliseconds(100), std::bind(&Approach_Server::publishTransform, this),callback_group_);
         }
     private:
-        
+        rclcpp::TimerBase::SharedPtr timer_;
+        std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_transform_broadcaster_;
+
         geometry_msgs::msg::Twist vel;
         std_msgs::msg::Empty ele;
 
@@ -60,6 +67,23 @@ class Approach_Server : public rclcpp::Node{
         size_t accept_idx_size=0;
 
         bool ud_date_cart_frame = false;
+
+        void publishTransform()
+        {
+            geometry_msgs::msg::TransformStamped transform_stamped;
+            transform_stamped.header.frame_id = "robot_base_link";
+            transform_stamped.child_frame_id = "base_link";
+            transform_stamped.transform.translation.x = 0.0;
+            transform_stamped.transform.translation.y = 0.0;
+            transform_stamped.transform.translation.z = 0.0;
+            transform_stamped.transform.rotation.x = 0.0;
+            transform_stamped.transform.rotation.y = 0.0;
+            transform_stamped.transform.rotation.z = 0.0;
+            transform_stamped.transform.rotation.w = 1.0;
+            transform_stamped.header.stamp = this->now();
+
+            static_transform_broadcaster_->sendTransform(transform_stamped);
+        }
 
         void scan_callback(const sensor_msgs::msg::LaserScan::SharedPtr msg){
             
