@@ -3,6 +3,7 @@ from copy import deepcopy
 import math
 
 from geometry_msgs.msg import PoseStamped
+from std_msgs.msg import Empty
 from rclpy.duration import Duration
 import rclpy
 from custom_interfaces.srv import GoToLoading
@@ -21,16 +22,19 @@ desired_rotation_angle = math.pi / 2.0
 
 # Shelf positions for loading
 loading_position = {
-    "position": [5.79, 0.95],
+    "position": [5.72, 0.95],
     "orientation": [ 0.0, 0.0 , -math.sin(desired_rotation_angle/2 ),math.cos(desired_rotation_angle/2 )]
     }
 
-# Shipping destination for picked products
-shipping_destinations = {
-    "recycling": [-0.205, 7.403],
-    "pallet_jack7": [-0.073, -8.497],
-    "conveyer_432": [6.217, 2.153],
-    "frieght_bay_3": [-6.349, 9.147]}
+# Secuirty route
+security_route = [
+    [5.5, 0.95, 0.71, 0.71],
+    [4.62, 1.1, 1.0 , 0.0],
+    [2.28, 0.218, 1.0, 0.0],
+    [1.145, -0.62, 0.92 , 0.38],
+    [0.8, -2.5, 0.71, 0.71]
+    ]
+
 
 class ServiceAndPublisherNode(Node):
 
@@ -45,7 +49,11 @@ class ServiceAndPublisherNode(Node):
         # Create a publisher for the custom footprint
         self.publisher_local = self.create_publisher(Polygon, 'local_costmap/footprint', 10)
         self.publisher_global = self.create_publisher(Polygon, 'global_costmap/footprint', 10)
+        self.publisher_ele_down = self.create_publisher(Empty, 'elevator_down', 10)
 
+    def ele_down(self):
+        ele_dn = Empty()
+        self.publisher_ele_down.publish(ele_dn)
 
     def call_approach_shelf(self):
 
@@ -112,11 +120,33 @@ class ServiceAndPublisherNode(Node):
 
         return new_footprint
 
+    def publish_circle_footprint(self, radius):
+        new_footprint = self.create_circle_footprint(radius)
+
+        # Publish the updated footprint
+        self.publisher_local.publish(new_footprint)
+        self.publisher_global.publish(new_footprint)
+        self.get_logger().info('publish circle new footprint')
+
+    def create_circle_footprint(self, radius):
+        new_footprint = Polygon()
+
+        # Number of sides to approximate the circle
+        num_sides = 60  # You can adjust this to change the circle's smoothness
+
+        for i in range(num_sides):
+            angle = (2 * 3.14159265359 * i) / num_sides
+            point = Point32()
+            point.x = radius * math.cos(angle)
+            point.y = radius * math.sin(angle)
+            point.z = 0.0
+            new_footprint.points.append(point)
+
+        return new_footprint
+
 
 
 def main():
-
-    request_destination = 'shipping_position'
     ####################
 
     rclpy.init()
@@ -151,6 +181,35 @@ def main():
     print('Received request for going to loading position')
     navigator.goToPose(shelf_item_pose)
 
+    i = 0
+    while not navigator.isTaskComplete():
+        i = i + 1
+        feedback = navigator.getFeedback()
+        if feedback and i % 5 == 0:
+            print('Estimated time of arrival at loading position' +
+                  ' for worker: ' + '{0:.0f}'.format(
+                      Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
+                  + ' seconds.')
+
+    print('Arrive at loading position!')
+
+    node.call_approach_shelf() 
+    print('Loading shelf successfully')
+
+    # Send your route
+    route_poses = []
+    pose = PoseStamped()
+    pose.header.frame_id = 'map'
+    pose.header.stamp = navigator.get_clock().now().to_msg()
+
+    for pt in security_route:
+        pose.pose.position.x = pt[0]
+        pose.pose.position.y = pt[1]
+        pose.pose.orientation.z = pt[2]
+        pose.pose.orientation.w = pt[3] 
+
+        route_poses.append(deepcopy(pose))
+    navigator.goThroughPoses(route_poses)
     # Do something during your route
     # (e.x. queue up future tasks or detect person for fine-tuned positioning)
     # Print information for workers on the robot's ETA for the demonstration
@@ -163,21 +222,18 @@ def main():
                   ' for worker: ' + '{0:.0f}'.format(
                       Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
                   + ' seconds.')
+        
 
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
-        print('Arrive at loading position!')
 
-        node.call_approach_shelf() 
-        
-        # shipping_destination = PoseStamped()
-        # shipping_destination.header.frame_id = 'map'
-        # shipping_destination.header.stamp = navigator.get_clock().now().to_msg()
-        # shipping_destination.pose.position.x = shipping_destinations[request_destination][0]
-        # shipping_destination.pose.position.y = shipping_destinations[request_destination][1]
-        # shipping_destination.pose.orientation.z = 1.0
-        # shipping_destination.pose.orientation.w = 0.0
-        # navigator.goToPose(shipping_destination)
+        node.ele_down()
+        print('Put shelt down')
+
+        node.publish_circle_footprint(0.15)
+
+        navigator.goToPose(initial_pose)
+        print('Return to Initial position')
 
     elif result == TaskResult.CANCELED:
         print('Task at loading position was canceled. Returning to staging point...')
