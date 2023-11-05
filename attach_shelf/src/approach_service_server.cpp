@@ -226,13 +226,16 @@ class Approach_Server : public rclcpp::Node{
                 {   
                     vel.linear.x = 0.1;
                     pub_->publish(vel);
-                    for(int i = 0 ; i< 5 ;i++) {
+                    for(int i = 0 ; i< 4 ;i++) {
                         r.sleep();
                     }                   
                     vel.linear.x = 0.0;
                     RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
                     pub_->publish(vel);
                     pub_elevator->publish(ele);
+                    for(int i = 0 ; i< 2 ;i++) {
+                        r.sleep();
+                    }         
                     move_forward = false;
                 }else {
                     vel.linear.x = distance_to_point*0.5 > 0.15 ? 0.15 : distance_to_point*0.5; // move in x-direction of robot's frame
