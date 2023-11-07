@@ -13,7 +13,7 @@ def generate_launch_description():
     
     nav2_yaml = os.path.join(get_package_share_directory('localization_server'), 'config', 'amcl_config.yaml')
 
-    map_file_arg = launch.substitutions.LaunchConfiguration('map_file', default= 'warehouse_map_sim.yaml')
+    map_file_arg = launch.substitutions.LaunchConfiguration('map_file', default= 'warehouse_map_real.yaml')
 
     map_file_path = PathJoinSubstitution(
     [get_package_share_directory('map_server'), 'config', map_file_arg]
@@ -66,7 +66,7 @@ def generate_launch_description():
             name='map_server',
             output='screen',
             arguments=["-map_file", map_file_arg],
-            parameters=[{'use_sim_time': True}, 
+            parameters=[{'use_sim_time': False}, 
                         {'yaml_filename':map_file_path} 
                        ]
             ),
@@ -84,7 +84,7 @@ def generate_launch_description():
             executable='lifecycle_manager',
             name='lifecycle_manager_localization',
             output='screen',
-            parameters=[{'use_sim_time': True},
+            parameters=[{'use_sim_time': False},
                         {'autostart': True},
                         {'node_names': ['map_server', 'amcl']}]
         )
