@@ -15,15 +15,15 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 
 #Initial position
 Initial_position = {
-    "position": [0.073, -0.05],
-    "orientation": [0.0, 0.0, 0.0, 1.0]
+    "position": [-3.0, -0.7],
+    "orientation": [0.0, 0.0, 0.24, 0.96]
     }
 desired_rotation_angle = math.pi / 2.0
 
 # Shelf positions for loading
 loading_position = {
-    "position": [5.72, 0.95],
-    "orientation": [ 0.0, 0.0 , -math.sin(desired_rotation_angle/2 ),math.cos(desired_rotation_angle/2 )]
+    "position": [0.9, 1.02],
+    "orientation": [ 0.0, 0.0 , -0.35, 0.93 ]
     }
 
 # Secuirty route
@@ -193,47 +193,48 @@ def main():
 
     print('Arrive at loading position!')
 
-    node.call_approach_shelf() 
-    print('Loading shelf successfully')
+    # node.call_approach_shelf() 
+    # print('Loading shelf successfully')
 
-    # Send your route
-    route_poses = []
-    pose = PoseStamped()
-    pose.header.frame_id = 'map'
-    pose.header.stamp = navigator.get_clock().now().to_msg()
+    # # Send your route
+    # route_poses = []
+    # pose = PoseStamped()
+    # pose.header.frame_id = 'map'
+    # pose.header.stamp = navigator.get_clock().now().to_msg()
 
-    for pt in security_route:
-        pose.pose.position.x = pt[0]
-        pose.pose.position.y = pt[1]
-        pose.pose.orientation.z = pt[2]
-        pose.pose.orientation.w = pt[3] 
+    # for pt in security_route:
+    #     pose.pose.position.x = pt[0]
+    #     pose.pose.position.y = pt[1]
+    #     pose.pose.orientation.z = pt[2]
+    #     pose.pose.orientation.w = pt[3] 
 
-        route_poses.append(deepcopy(pose))
-    navigator.goThroughPoses(route_poses)
-    # Do something during your route
-    # (e.x. queue up future tasks or detect person for fine-tuned positioning)
-    # Print information for workers on the robot's ETA for the demonstration
-    i = 0
-    while not navigator.isTaskComplete():
-        i = i + 1
-        feedback = navigator.getFeedback()
-        if feedback and i % 5 == 0:
-            print('Estimated time of arrival at loading position' +
-                  ' for worker: ' + '{0:.0f}'.format(
-                      Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
-                  + ' seconds.')
+    #     route_poses.append(deepcopy(pose))
+    # navigator.goThroughPoses(route_poses)
+    # # Do something during your route
+    # # (e.x. queue up future tasks or detect person for fine-tuned positioning)
+    # # Print information for workers on the robot's ETA for the demonstration
+    # i = 0
+    # while not navigator.isTaskComplete():
+    #     i = i + 1
+    #     feedback = navigator.getFeedback()
+    #     if feedback and i % 5 == 0:
+    #         print('Estimated time of arrival at loading position' +
+    #               ' for worker: ' + '{0:.0f}'.format(
+    #                   Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
+    #               + ' seconds.')
         
 
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
 
-        node.ele_down()
-        print('Put shelt down')
+        # node.ele_down()
+        # print('Put shelt down')
 
-        node.publish_circle_footprint(0.15)
+        # node.publish_circle_footprint(0.15)
 
-        navigator.goToPose(initial_pose)
-        print('Return to Initial position')
+        # navigator.goToPose(initial_pose)
+        # print('Return to Initial position')
+        print('Task succeed')
 
     elif result == TaskResult.CANCELED:
         print('Task at loading position was canceled. Returning to staging point...')
