@@ -1,3 +1,4 @@
+#include "geometry_msgs/msg/detail/transform_stamped__struct.hpp"
 #include "rclcpp/node.hpp"
 #include "rclcpp/rate.hpp"
 #include "sensor_msgs/msg/detail/laser_scan__struct.hpp"
@@ -15,9 +16,10 @@
 #include <tf2_ros/transform_broadcaster.h>
 #include <tf2_ros/static_transform_broadcaster.h>
 #include "std_msgs/msg/detail/empty__struct.hpp"
+#include "std_msgs/msg/detail/string__struct.hpp"
 #include "tf2_ros/transform_listener.h"
 #include "tf2_ros/buffer.h"
-#include "std_msgs/msg/empty.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "custom_interfaces/srv/go_to_loading.hpp"
 #include <geometry_msgs/msg/transform_stamped.hpp>
 
@@ -39,7 +41,7 @@ class Approach_Server : public rclcpp::Node{
             callback_group_);
 
             pub_ = this->create_publisher<geometry_msgs::msg::Twist>("robot/cmd_vel", 10);
-            pub_elevator = this->create_publisher<std_msgs::msg::Empty>("/elevator_up", 10);
+            pub_elevator = this->create_publisher<std_msgs::msg::String>("/elevator_up", 10);
 
             static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
 
@@ -53,7 +55,7 @@ class Approach_Server : public rclcpp::Node{
         std::shared_ptr<tf2_ros::StaticTransformBroadcaster> static_transform_broadcaster_;
 
         geometry_msgs::msg::Twist vel;
-        std_msgs::msg::Empty ele;
+        std_msgs::msg::String ele;
 
         rclcpp::Subscription<sensor_msgs::msg::LaserScan>::SharedPtr sub_scan;
         rclcpp::Service<custom_interfaces::srv::GoToLoading>::SharedPtr srv_;
@@ -61,7 +63,7 @@ class Approach_Server : public rclcpp::Node{
 
         tf2_ros::StaticTransformBroadcaster static_broadcaster_{this};
         rclcpp::Publisher<geometry_msgs::msg::Twist>::SharedPtr pub_;
-        rclcpp::Publisher<std_msgs::msg::Empty>::SharedPtr pub_elevator;
+        rclcpp::Publisher<std_msgs::msg::String>::SharedPtr pub_elevator;
         rclcpp::CallbackGroup::SharedPtr callback_group_;
 
         tf2_ros::Buffer tf_buffer_;
@@ -143,36 +145,44 @@ class Approach_Server : public rclcpp::Node{
                 
             if (ud_date_cart_frame ) {
 
-                geometry_msgs::msg::TransformStamped transform;
-
-                try
-                {
-                    transform = tf_buffer_.lookupTransform("robot_odom", "robot_base_link", rclcpp::Time(0));
-                }
-                catch (tf2::TransformException &ex)
-                {
-                    RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
-                    return;
-                }
-
                 RCLCPP_INFO(this->get_logger(), "X1 = %f",x1);
                 RCLCPP_INFO(this->get_logger(), "Y1 = %f",y1);
                 RCLCPP_INFO(this->get_logger(), "X2 = %f",x2);
                 RCLCPP_INFO(this->get_logger(), "Y2 = %f",y2);
-                RCLCPP_INFO(this->get_logger(), "T-X = %f",transform.transform.translation.x);
-                RCLCPP_INFO(this->get_logger(), "T-Y = %f",transform.transform.translation.y);
 
-                static_broadcaster_.sendTransform(broadcast_transform( transform, (y1+y2)/2, (x1+x2)/2 + std::fabs((y1-y2)*1.5/2) ) );
+                static_broadcaster_.sendTransform(broadcast_transform(std::fabs((y1-y2)*0.95/2),0 ) );
 
                 ud_date_cart_frame = false;
             }
         
         }
 
+        void publish_cart_front_link(){
+
+            geometry_msgs::msg::TransformStamped transform;
+            geometry_msgs::msg::TransformStamped transform_stamped;
+
+            try
+            {
+                transform = tf_buffer_.lookupTransform("robot_odom", "robot_cart_laser", rclcpp::Time(0));
+            }
+            catch (tf2::TransformException &ex)
+            {
+                RCLCPP_ERROR(this->get_logger(), "%s", ex.what());
+                return;
+            }
+            transform_stamped = transform;
+            transform_stamped.header.frame_id = "robot_odom";
+            transform_stamped.child_frame_id = "cart_front_link";
+            transform_stamped.header.stamp = this->now();
+
+            static_transform_broadcaster_->sendTransform(transform_stamped);
+        }
+
         void attach_callback(const std::shared_ptr<custom_interfaces::srv::GoToLoading::Request> req, 
         const std::shared_ptr<custom_interfaces::srv::GoToLoading::Response> res){
             rclcpp::Rate l(1);
-
+            publish_cart_front_link();
             if(req->attach_to_shelf == true && accept_idx_size == 2){
                 ud_date_cart_frame = true;
                 set_map_cart_tf();
@@ -202,19 +212,19 @@ class Approach_Server : public rclcpp::Node{
             }
         }
 
-        geometry_msgs::msg::TransformStamped broadcast_transform(geometry_msgs::msg::TransformStamped t, float x,float y){
+        geometry_msgs::msg::TransformStamped broadcast_transform( float x,float y){
                 
-                // geometry_msgs::msg::TransformStamped t;
+                geometry_msgs::msg::TransformStamped t;
                 t.header.stamp = this->now();
-                t.header.frame_id = "robot_odom";
+                t.header.frame_id = "cart_front_link";
                 t.child_frame_id = "cart_frame";
-                t.transform.translation.x = t.transform.translation.x - x ; //-x
-                t.transform.translation.y = t.transform.translation.y - y;
+                t.transform.translation.x = x ; //-x
+                t.transform.translation.y = y;
                 // t.transform.translation.z = 0.0; 
                 // t.transform.rotation.x = 0.0;
                 // t.transform.rotation.y = 0.0;
-                t.transform.rotation.z = 0.7017;
-                t.transform.rotation.w = -0.7017;
+                // t.transform.rotation.z = 0;
+                // t.transform.rotation.w = 1;
 
                 return t;
         }
@@ -263,19 +273,28 @@ class Approach_Server : public rclcpp::Node{
                     RCLCPP_INFO(this->get_logger(), "< TF -- Y= %f",transform.transform.translation.y);
                     RCLCPP_INFO(this->get_logger(), "< vel.linear = %f",vel.linear.x);
                     pub_->publish(vel);
-                    // pub_elevator->publish(ele);
-                    for(int i = 0 ; i< 2 ;i++) {
+                    pub_elevator->publish(ele);
+                    for(int i = 0 ; i< 10 ;i++) {
                         r.sleep();
-                    }         
+                        RCLCPP_INFO(this->get_logger(), "COUNT %i",i);
+                    }     
+                    vel.linear.x = -0.12;
+                    for(int i = 0 ; i< 4 ;i++) {
+                        r.sleep();
+                        pub_->publish(vel);
+                        RCLCPP_INFO(this->get_logger(), "COUNT %i",i);
+                    }
+                    vel.linear.x = 0.00;
+                    pub_->publish(vel); 
                     move_forward = false;
                 }else {
-                    vel.linear.x = std::fabs(transform.transform.translation.x)*0.5 > 0.15 ? 0.15 : std::fabs(transform.transform.translation.x)*0.5; // move in x-direction of robot's frame
+                    vel.linear.x = std::fabs(transform.transform.translation.x)*0.5 > 0.15 ? 0.12 : std::fabs(transform.transform.translation.x)*0.5; // move in x-direction of robot's frame
                     RCLCPP_INFO(this->get_logger(), "vel.linear = %f",vel.linear.x);
                     
                     RCLCPP_INFO(this->get_logger(), "TF -- X= %f",transform.transform.translation.x);
 
                     RCLCPP_INFO(this->get_logger(), "TF -- Y= %f",transform.transform.translation.y);
-                    // pub_->publish(vel);
+                    pub_->publish(vel);
                     
                 }
                 }
