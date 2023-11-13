@@ -3,7 +3,7 @@ from copy import deepcopy
 import math
 
 from geometry_msgs.msg import PoseStamped
-from std_msgs.msg import Empty
+from std_msgs.msg import String
 from rclpy.duration import Duration
 import rclpy
 from custom_interfaces.srv import GoToLoading
@@ -16,25 +16,32 @@ from nav2_simple_commander.robot_navigator import BasicNavigator, TaskResult
 #Initial position
 Initial_position = {
     "position": [-3.0, -0.7],
-    "orientation": [0.0, 0.0, 0.24, 0.96]
+    "orientation": [0.0, 0.0, 0.38, 0.92]
     }
 desired_rotation_angle = math.pi / 2.0
 
 # Shelf positions for loading
 loading_position = {
-    "position": [0.9, 1.02],
-    "orientation": [ 0.0, 0.0 , -0.35, 0.93 ]
+    "position": [0.92148, 0.8507],
+    "orientation": [ 0.0, 0.0 , -0.4883, 0.872673 ]
     }
 
 # Secuirty route
-security_route = [
-    [5.5, 0.95, 0.71, 0.71],
-    [4.62, 1.1, 1.0 , 0.0],
-    [2.28, 0.218, 1.0, 0.0],
-    [1.145, -0.62, 0.92 , 0.38],
-    [0.8, -2.5, 0.71, 0.71]
-    ]
+security_route = {
+    "position": [1.43043, 0.243886],
+    "orientation": [ 0.0, 0.0 ,  0.926911, 0.375282 ]
+    }
 
+# security_route = [
+#     [1.2585, 0.543, -0.747, 0.664]
+#     ]
+
+security_route_2 = [
+    # [1.307, 0.178, 0.988, 0.1517]
+    [0.226, 0.94, -0.929, 0.369],
+    [-2.08, -0.89, -0.59 , 0.801],
+    [-1.45, -3.15, 0.918, 0.396],
+    ]
 
 class ServiceAndPublisherNode(Node):
 
@@ -49,10 +56,10 @@ class ServiceAndPublisherNode(Node):
         # Create a publisher for the custom footprint
         self.publisher_local = self.create_publisher(Polygon, 'local_costmap/footprint', 10)
         self.publisher_global = self.create_publisher(Polygon, 'global_costmap/footprint', 10)
-        self.publisher_ele_down = self.create_publisher(Empty, 'elevator_down', 10)
+        self.publisher_ele_down = self.create_publisher(String, 'elevator_down', 10)
 
     def ele_down(self):
-        ele_dn = Empty()
+        ele_dn = String()
         self.publisher_ele_down.publish(ele_dn)
 
     def call_approach_shelf(self):
@@ -91,7 +98,7 @@ class ServiceAndPublisherNode(Node):
             
         new_footprint = Polygon()
         # new_footprint.header.frame_id = 'robot_odom'  # Specify the frame_id 
-
+        length = length*0.85
         point1 = Point32()
         point1.x = length / 2.0
         point1.y = length / 2.0
@@ -193,36 +200,61 @@ def main():
 
     print('Arrive at loading position!')
 
-    # node.call_approach_shelf() 
-    # print('Loading shelf successfully')
+    node.call_approach_shelf() 
+    print('Loading shelf successfully')
 
-    # # Send your route
-    # route_poses = []
-    # pose = PoseStamped()
-    # pose.header.frame_id = 'map'
-    # pose.header.stamp = navigator.get_clock().now().to_msg()
+    # Security outside
 
-    # for pt in security_route:
-    #     pose.pose.position.x = pt[0]
-    #     pose.pose.position.y = pt[1]
-    #     pose.pose.orientation.z = pt[2]
-    #     pose.pose.orientation.w = pt[3] 
+    security_pose = PoseStamped()
+    security_pose.header.frame_id = 'map'
+    security_pose.header.stamp = navigator.get_clock().now().to_msg()
+    security_pose.pose.position.x = security_route['position'][0]
+    security_pose.pose.position.y = security_route['position'][1]
+    security_pose.pose.orientation.x = security_route['orientation'][0]
+    security_pose.pose.orientation.y = security_route['orientation'][1]
+    security_pose.pose.orientation.z = security_route['orientation'][2]
+    security_pose.pose.orientation.w = security_route['orientation'][3]
+    print('Received request for going to loading position')
+    navigator.goToPose(security_pose)
 
-    #     route_poses.append(deepcopy(pose))
-    # navigator.goThroughPoses(route_poses)
-    # # Do something during your route
-    # # (e.x. queue up future tasks or detect person for fine-tuned positioning)
-    # # Print information for workers on the robot's ETA for the demonstration
-    # i = 0
-    # while not navigator.isTaskComplete():
-    #     i = i + 1
-    #     feedback = navigator.getFeedback()
-    #     if feedback and i % 5 == 0:
-    #         print('Estimated time of arrival at loading position' +
-    #               ' for worker: ' + '{0:.0f}'.format(
-    #                   Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
-    #               + ' seconds.')
+    i = 0
+    while not navigator.isTaskComplete():
+        i = i + 1
+        feedback = navigator.getFeedback()
+        if feedback and i % 5 == 0:
+            print('Estimated time of arrival at loading position' +
+                  ' for worker: ' + '{0:.0f}'.format(
+                      Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
+                  + ' seconds.')
+
+    print('Arrive at security place!')
         
+        # Send your route
+    route_poses_1 = []
+    pose_1 = PoseStamped()
+    pose_1.header.frame_id = 'map'
+    pose_1.header.stamp = navigator.get_clock().now().to_msg()
+
+    for pt in security_route_2:
+        pose_1.pose.position.x = pt[0]
+        pose_1.pose.position.y = pt[1]
+        pose_1.pose.orientation.z = pt[2]
+        pose_1.pose.orientation.w = pt[3] 
+
+        route_poses_1.append(deepcopy(pose_1))
+    navigator.goThroughPoses(route_poses_1)
+    # Do something during your route
+    # (e.x. queue up future tasks or detect person for fine-tuned positioning)
+    # Print information for workers on the robot's ETA for the demonstration
+    i = 0
+    while not navigator.isTaskComplete():
+        i = i + 1
+        feedback = navigator.getFeedback()
+        if feedback and i % 5 == 0:
+            print('Estimated time of arrival at loading position' +
+                  ' for worker: ' + '{0:.0f}'.format(
+                      Duration.from_msg(feedback.estimated_time_remaining).nanoseconds / 1e9)
+                  + ' seconds.') 
 
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:

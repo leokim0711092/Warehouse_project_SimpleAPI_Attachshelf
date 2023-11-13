@@ -36,7 +36,7 @@ class ServiceAndPublisherNode(Node):
             
         new_footprint = Polygon()
         # new_footprint.header.frame_id = 'robot_odom'  # Specify the frame_id 
-
+        length = 0.8*length
         point1 = Point32()
         point1.x = length / 2.0
         point1.y = length / 2.0
