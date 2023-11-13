@@ -259,13 +259,13 @@ def main():
     result = navigator.getResult()
     if result == TaskResult.SUCCEEDED:
 
-        # node.ele_down()
-        # print('Put shelt down')
+        node.ele_down()
+        print('Put shelt down')
 
-        # node.publish_circle_footprint(0.15)
+        node.publish_circle_footprint(0.15)
 
-        # navigator.goToPose(initial_pose)
-        # print('Return to Initial position')
+        navigator.goToPose(initial_pose)
+        print('Return to Initial position')
         print('Task succeed')
 
     elif result == TaskResult.CANCELED:
