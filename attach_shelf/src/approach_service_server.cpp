@@ -40,7 +40,7 @@ class Approach_Server : public rclcpp::Node{
             std::bind(&Approach_Server::attach_callback, this, std::placeholders::_1, std::placeholders::_2),rmw_qos_profile_services_default,
             callback_group_);
 
-            pub_ = this->create_publisher<geometry_msgs::msg::Twist>("robot/cmd_vel", 10);
+            pub_ = this->create_publisher<geometry_msgs::msg::Twist>("cmd_vel", 10);
             pub_elevator = this->create_publisher<std_msgs::msg::String>("/elevator_up", 10);
 
             static_transform_broadcaster_ = std::make_shared<tf2_ros::StaticTransformBroadcaster>(this);
