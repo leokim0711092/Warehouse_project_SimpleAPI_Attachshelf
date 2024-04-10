@@ -1,19 +1,19 @@
-# Warehouse AMR - Move shelt to ship position
+# Warehouse AMR - Move shelf to ship position
 
 The Warehouse AMR Navigation System project is centered on developing an efficient, autonomous navigation system for the RB1 mobile robot. Our goal is to enable precise and adaptive movement within a dynamic warehouse environment.
 
 ## Workflow Overview:
 
 1. Configuration of the Navigation System: 
-Set up and configuration of the RB1 robot's navigation system to ensure seamless initial operation within a controlled environment.
+- Set up and configuration of the RB1 robot's navigation system to ensure seamless initial operation within a controlled environment.
 
 2. Integration with Simple Commander API:
-   Utilization of the Simple Commander API to interact with the Nav2 system, creating sophisticated navigation routes: 
+- Utilization of the Simple Commander API to interact with the Nav2 system, creating navigation routes: 
 
-3. Script Execution - move_shelf_to_ship.py: 
-Deployment of a script enabling the robot to localize itself within the warehouse and move to the designated loading position.
+4. Script Execution - move_shelf_to_ship.py: 
+- Deployment of a script enabling the robot to localize itself within the warehouse and move to the designated loading position.
 
-4. Shelf Handling Capabilities: 
+5. Shelf Handling Capabilities: 
 - Under-shelf Navigation: Engineering the robot to navigate beneath the shelf, attach itself, and adapt its configuration for optimal maneuverability.
   
 - Keepout Mask Activation: Activation of a visual keepout system using cones to mark restricted areas during the navigation system's startup.
@@ -79,8 +79,8 @@ Deployment of a script enabling the robot to localize itself within the warehous
 
 ## Demo
 
-[RoboCafe' demo
-](https://www.youtube.com/watch?v=-7of2jbOiUU)
+[Warehouse AMR demo
+](https://www.youtube.com/watch?v=eYSYurGJ0aA&t=10s)
 
 ## Authors
 
